@@ -15,6 +15,9 @@ from .utils import iter_file
 
 logger = logging.getLogger(__name__)
 
+FLUSH_BYTES_THRESHOLD = 5 * 1024 * 1024
+FLUSH_SECONDS_THRESHOLD = 5
+
 
 @dataclass
 class RangeRequest:
@@ -135,7 +138,7 @@ class StreamTracker:
 
     def add(self, count: int) -> None:
         self.bytes_since += count
-        if self.bytes_since >= 5 * 1024 * 1024 or (time.time() - self.last_flush) > 5:
+        if self.bytes_since >= FLUSH_BYTES_THRESHOLD or (time.time() - self.last_flush) > FLUSH_SECONDS_THRESHOLD:
             self.flush(final=False)
 
     def flush(self, final: bool) -> None:
