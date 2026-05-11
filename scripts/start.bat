@@ -9,5 +9,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$uvicorn = Start-Process -FilePath python -ArgumentList @('-m','uvicorn','backend.app:app','--host','0.0.0.0','--port',$port) -PassThru; " ^
   "$streamlit = Start-Process -FilePath python -ArgumentList @('-m','streamlit','run','backend/admin_app.py','--server.address','0.0.0.0','--server.port',$streamlitPort,'--server.headless','true') -PassThru; " ^
   "Wait-Process -Id $uvicorn.Id,$streamlit.Id -Any; " ^
-  "if (-not $uvicorn.HasExited) { Stop-Process -Id $uvicorn.Id -Force }; " ^
-  "if (-not $streamlit.HasExited) { Stop-Process -Id $streamlit.Id -Force }"
+  "Get-Process -Id $uvicorn.Id,$streamlit.Id -ErrorAction SilentlyContinue | Stop-Process -Force"
