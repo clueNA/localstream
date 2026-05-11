@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# LocalStream runtime data
+/media/
+/thumbnails/
+/subtitles/
+/database/
+
+# Frontend dependencies
+/frontend/node_modules/
+/frontend/package-lock.json

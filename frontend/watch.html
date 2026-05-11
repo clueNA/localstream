@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LocalStream Player</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="top-bar">
+      <a class="brand" href="/">LocalStream</a>
+      <div class="player-actions">
+        <label>
+          Speed
+          <select id="speed-select">
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+          </select>
+        </label>
+        <button id="favorite-btn" class="ghost">☆ Favorite</button>
+        <button id="theme-toggle" class="ghost">Toggle Theme</button>
+      </div>
+    </header>
+
+    <main class="player-page">
+      <div class="player-container">
+        <video
+          id="player"
+          controls
+          playsinline
+          webkit-playsinline
+          x-webkit-airplay="allow"
+          preload="metadata"
+        ></video>
+      </div>
+      <div class="player-meta">
+        <h1 id="title"></h1>
+        <p id="details"></p>
+        <p id="description"></p>
+        <div id="subtitle-info"></div>
+      </div>
+    </main>
+
+    <div id="password-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Enter Streaming Password</h3>
+        <input id="password-input" type="password" placeholder="Password" />
+        <button id="password-submit">Unlock</button>
+      </div>
+    </div>
+
+    <script src="/static/watch.js"></script>
+  </body>
+</html>

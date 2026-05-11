@@ -1,0 +1,15 @@
+services:
+  localstream:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+      - "8501:8501"
+    env_file:
+      - ../.env
+    volumes:
+      - ../media:/app/media
+      - ../thumbnails:/app/thumbnails
+      - ../subtitles:/app/subtitles
+      - ../database:/app/database
