@@ -39,7 +39,11 @@ cp .env.example .env
 python -m pip install -r requirements.txt
 
 # Start FastAPI + Streamlit
+# macOS/Linux
 ./scripts/start.sh
+
+# Windows (PowerShell/CMD)
+.\scripts\start.bat
 ```
 
 - Viewer: `http://<local-ip>:8000`
