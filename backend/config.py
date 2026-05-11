@@ -23,6 +23,7 @@ STREAMLIT_PORT = int(os.getenv("STREAMLIT_PORT", "8501"))
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip()
 STREAM_PASSWORD = os.getenv("STREAM_PASSWORD", "").strip()
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "").strip()
+STREAM_TOKEN_TTL = int(os.getenv("STREAM_TOKEN_TTL", "43200"))
 
 FFPROBE_PATH = os.getenv("FFPROBE_PATH", "ffprobe")
 FFMPEG_PATH = os.getenv("FFMPEG_PATH", "ffmpeg")

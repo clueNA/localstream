@@ -60,3 +60,12 @@ class StreamSessionOut(BaseModel):
 class ServiceStateOut(BaseModel):
     streaming_enabled: bool
     updated_at: datetime
+
+
+class StreamTokenRequest(BaseModel):
+    password: str
+
+
+class StreamTokenResponse(BaseModel):
+    token: str
+    expires_in: int

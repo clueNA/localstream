@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,8 +27,8 @@ class Media(Base):
     mime_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
     poster_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     preview_dir: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     subtitle_tracks: Mapped[list[SubtitleTrack]] = relationship(
         "SubtitleTrack",
@@ -64,8 +64,8 @@ class StreamSession(Base):
     media_id: Mapped[int] = mapped_column(ForeignKey("media.id"), nullable=False)
     client_ip: Mapped[str] = mapped_column(String(120), nullable=False)
     user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    last_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     bytes_sent: Mapped[int] = mapped_column(BigInteger, default=0)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -77,4 +77,4 @@ class ServiceState(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     streaming_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 import psutil
@@ -77,7 +77,7 @@ with SessionLocal() as db:
     streaming_enabled = st.toggle("Streaming enabled", value=state.streaming_enabled)
     if streaming_enabled != state.streaming_enabled:
         state.streaming_enabled = streaming_enabled
-        state.updated_at = datetime.utcnow()
+        state.updated_at = datetime.now(timezone.utc)
         db.commit()
 
     tabs = st.tabs(["Upload", "Library", "Streams", "Analytics"])
@@ -128,7 +128,7 @@ with SessionLocal() as db:
 
     with tabs[2]:
         st.subheader("Active Streams")
-        cutoff = datetime.utcnow() - timedelta(minutes=5)
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
         sessions = (
             db.query(StreamSession)
             .filter(StreamSession.last_seen >= cutoff, StreamSession.active.is_(True))
@@ -146,7 +146,7 @@ with SessionLocal() as db:
                 )
                 if cols[1].button("Terminate", key=f"terminate-{session.id}"):
                     session.active = False
-                    session.last_seen = datetime.utcnow()
+                    session.last_seen = datetime.now(timezone.utc)
                     db.commit()
                     st.experimental_rerun()
 

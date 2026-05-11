@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import shutil
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 from uuid import uuid4
@@ -122,8 +122,8 @@ def save_upload(upload_file, db: Session) -> Media:
         video_codec=metadata.get("video", {}).get("codec"),
         audio_codec=metadata.get("audio", {}).get("codec"),
         mime_type=guess_mime_type(file_path),
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
     db.add(media)
     db.commit()
@@ -137,7 +137,7 @@ def save_upload(upload_file, db: Session) -> Media:
 
     media.poster_path = str(poster_path) if poster_path.exists() else None
     media.preview_dir = str(preview_dir) if previews else None
-    media.updated_at = datetime.utcnow()
+    media.updated_at = datetime.now(timezone.utc)
 
     subtitle_tracks: list[SubtitleTrack] = []
     for subtitle in metadata.get("subtitles", []):
@@ -194,7 +194,7 @@ def update_media(db: Session, media: Media, title: str | None, description: str 
         media.description = description
     if category is not None:
         media.category = category
-    media.updated_at = datetime.utcnow()
+    media.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(media)
     return media

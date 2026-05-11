@@ -118,7 +118,10 @@ def transcode_stream(path: Path, on_chunk: Callable[[int], None] | None = None) 
                 yield chunk
         finally:
             process.stdout.close()
-            process.wait(timeout=10)
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill()
 
     return StreamingResponse(iterator(), media_type="video/mp4")
 

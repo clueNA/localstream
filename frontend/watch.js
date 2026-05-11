@@ -17,6 +17,7 @@ const passwordSubmit = document.getElementById('password-submit');
 
 const favoritesKey = 'favorites';
 const progressKey = 'watchProgress';
+const tokenKey = 'streamToken';
 
 let streamPasswordRequired = false;
 
@@ -40,18 +41,35 @@ function saveFavorites(favorites) {
 }
 
 function getToken() {
-  return localStorage.getItem('streamPassword') || '';
+  return sessionStorage.getItem(tokenKey) || '';
+}
+
+async function requestToken(password) {
+  const response = await fetch(`${baseUrl}/api/auth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  if (!response.ok) {
+    throw new Error('Invalid password');
+  }
+  const data = await response.json();
+  sessionStorage.setItem(tokenKey, data.token);
 }
 
 function ensurePassword() {
   if (!streamPasswordRequired) return;
   if (getToken()) return;
   modal.classList.remove('hidden');
-  passwordSubmit.onclick = () => {
+  passwordSubmit.onclick = async () => {
     if (passwordInput.value.trim()) {
-      localStorage.setItem('streamPassword', passwordInput.value.trim());
-      modal.classList.add('hidden');
-      loadMedia();
+      try {
+        await requestToken(passwordInput.value.trim());
+        modal.classList.add('hidden');
+        loadMedia();
+      } catch (error) {
+        alert('Invalid password');
+      }
     }
   };
 }

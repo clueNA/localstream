@@ -59,6 +59,7 @@ docker compose up --build
 See `.env.example` for the full list. Common options:
 
 - `STREAM_PASSWORD` – require a password for streaming URLs
+- `STREAM_TOKEN_TTL` – token lifetime in seconds for streaming access
 - `ADMIN_PASSWORD` – protect the Streamlit dashboard
 - `PUBLIC_BASE_URL` – override the base URL shown in the UI
 - `MAX_UPLOAD_MB` – hard limit for uploads

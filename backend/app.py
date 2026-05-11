@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+import secrets
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List
 
@@ -19,6 +20,7 @@ from .config import (
     PORT,
     STREAM_PASSWORD,
     STREAMING_ENABLED_DEFAULT,
+    STREAM_TOKEN_TTL,
 )
 from .db import SessionLocal, init_db
 from .media_service import (
@@ -31,12 +33,22 @@ from .media_service import (
     update_media,
 )
 from .models import StreamSession
-from .schemas import MediaOut, MediaUpdate, ServiceStateOut, StreamSessionOut, SubtitleTrackOut
+from .schemas import (
+    MediaOut,
+    MediaUpdate,
+    ServiceStateOut,
+    StreamSessionOut,
+    StreamTokenRequest,
+    StreamTokenResponse,
+    SubtitleTrackOut,
+)
 from .streaming import StreamTracker, parse_range_header, stream_file, transcode_stream
 from .utils import build_public_base_url, get_local_ip, guess_mime_type
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("localstream")
+
+STREAM_TOKENS: dict[str, datetime] = {}
 
 app = FastAPI(title="LocalStream", version="0.1.0")
 
@@ -56,7 +68,7 @@ def startup() -> None:
         state = get_or_create_service_state(db)
         if state.streaming_enabled != STREAMING_ENABLED_DEFAULT:
             state.streaming_enabled = STREAMING_ENABLED_DEFAULT
-            state.updated_at = datetime.utcnow()
+            state.updated_at = datetime.now(timezone.utc)
             db.commit()
 
 
@@ -104,8 +116,27 @@ def require_stream_token(request: Request) -> None:
     if not STREAM_PASSWORD:
         return
     token = request.query_params.get("token") or request.headers.get("X-Stream-Token")
-    if token != STREAM_PASSWORD:
-        raise HTTPException(status_code=401, detail="Streaming password required")
+    if not token or not validate_stream_token(token):
+        raise HTTPException(status_code=401, detail="Streaming token required")
+
+
+def issue_stream_token(password: str) -> StreamTokenResponse:
+    if password != STREAM_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid password")
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=STREAM_TOKEN_TTL)
+    STREAM_TOKENS[token] = expires_at
+    return StreamTokenResponse(token=token, expires_in=STREAM_TOKEN_TTL)
+
+
+def validate_stream_token(token: str) -> bool:
+    expires_at = STREAM_TOKENS.get(token)
+    if not expires_at:
+        return False
+    if expires_at < datetime.now(timezone.utc):
+        STREAM_TOKENS.pop(token, None)
+        return False
+    return True
 
 
 def serialize_media(media, base_url: str) -> MediaOut:
@@ -157,6 +188,13 @@ def info(db: Session = Depends(get_db)) -> dict[str, object]:
         "admin_password_required": bool(ADMIN_PASSWORD),
         "streaming_enabled": state.streaming_enabled,
     }
+
+
+@app.post("/api/auth/token", response_model=StreamTokenResponse)
+def api_auth_token(payload: StreamTokenRequest) -> StreamTokenResponse:
+    if not STREAM_PASSWORD:
+        raise HTTPException(status_code=400, detail="Streaming password not configured")
+    return issue_stream_token(payload.password)
 
 
 @app.get("/api/media", response_model=List[MediaOut])
@@ -225,7 +263,12 @@ def api_preview(media_id: int, filename: str, db: Session = Depends(get_db)) -> 
     media = get_media(db, media_id)
     if not media or not media.preview_dir:
         raise HTTPException(status_code=404, detail="Preview not found")
-    preview_path = Path(media.preview_dir) / filename
+    if Path(filename).name != filename:
+        raise HTTPException(status_code=400, detail="Invalid preview name")
+    preview_dir = Path(media.preview_dir).resolve()
+    preview_path = (preview_dir / filename).resolve()
+    if preview_dir not in preview_path.parents:
+        raise HTTPException(status_code=400, detail="Invalid preview path")
     if not preview_path.exists():
         raise HTTPException(status_code=404, detail="Preview not found")
     return FileResponse(preview_path, media_type="image/jpeg")
@@ -267,8 +310,8 @@ def create_stream_session(db: Session, media_id: int, client_ip: str, user_agent
         client_ip=client_ip,
         user_agent=user_agent,
         active=True,
-        started_at=datetime.utcnow(),
-        last_seen=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
+        last_seen=datetime.now(timezone.utc),
         bytes_sent=0,
     )
     db.add(session)
@@ -283,7 +326,7 @@ def update_session_bytes(session_id: int, bytes_sent: int, final: bool) -> None:
         if not session:
             return
         session.bytes_sent += bytes_sent
-        session.last_seen = datetime.utcnow()
+        session.last_seen = datetime.now(timezone.utc)
         if final:
             session.active = False
         db.commit()
@@ -335,7 +378,7 @@ def api_service_start(request: Request, db: Session = Depends(get_db)) -> Servic
     require_admin(request)
     state = get_or_create_service_state(db)
     state.streaming_enabled = True
-    state.updated_at = datetime.utcnow()
+    state.updated_at = datetime.now(timezone.utc)
     db.commit()
     return ServiceStateOut(streaming_enabled=state.streaming_enabled, updated_at=state.updated_at)
 
@@ -345,14 +388,14 @@ def api_service_stop(request: Request, db: Session = Depends(get_db)) -> Service
     require_admin(request)
     state = get_or_create_service_state(db)
     state.streaming_enabled = False
-    state.updated_at = datetime.utcnow()
+    state.updated_at = datetime.now(timezone.utc)
     db.commit()
     return ServiceStateOut(streaming_enabled=state.streaming_enabled, updated_at=state.updated_at)
 
 
 @app.get("/api/sessions", response_model=List[StreamSessionOut])
 def api_sessions(db: Session = Depends(get_db)) -> list[StreamSessionOut]:
-    cutoff = datetime.utcnow() - timedelta(minutes=5)
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
     sessions = (
         db.query(StreamSession)
         .filter(StreamSession.last_seen >= cutoff, StreamSession.active.is_(True))
@@ -369,7 +412,7 @@ def api_terminate_session(session_id: int, request: Request, db: Session = Depen
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     session.active = False
-    session.last_seen = datetime.utcnow()
+    session.last_seen = datetime.now(timezone.utc)
     db.commit()
     return {"status": "terminated"}
 
