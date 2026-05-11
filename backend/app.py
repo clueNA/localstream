@@ -263,13 +263,10 @@ def api_preview(media_id: int, filename: str, db: Session = Depends(get_db)) -> 
     media = get_media(db, media_id)
     if not media or not media.preview_dir:
         raise HTTPException(status_code=404, detail="Preview not found")
-    if Path(filename).name != filename:
-        raise HTTPException(status_code=400, detail="Invalid preview name")
     preview_dir = Path(media.preview_dir).resolve()
-    preview_path = (preview_dir / filename).resolve()
-    if preview_dir not in preview_path.parents:
-        raise HTTPException(status_code=400, detail="Invalid preview path")
-    if not preview_path.exists():
+    previews = {item.name: item for item in preview_dir.glob("preview_*.jpg")}
+    preview_path = previews.get(filename)
+    if not preview_path:
         raise HTTPException(status_code=404, detail="Preview not found")
     return FileResponse(preview_path, media_type="image/jpeg")
 
